@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  position: relative;
+  outline: none;
+}
+
+a,
+button {
+  text-decoration: none;
+  cursor: pointer;
+  appearance: none;
+  color: inherit;
+  font: inherit;
+}
+
+:root {
+  font-family: 'Nanum Gothic Coding', 'Inconsolata', 'Monaco', monospace;
+  background: #000;
+  color: #fff;
+  font-size: 12px;
+}
