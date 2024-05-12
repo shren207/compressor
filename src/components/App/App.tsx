@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ExoQuant } from '~/utils/exoquant.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ExoQuant } from '~/utils/exoquant.js';
 import { useDropzone } from 'react-dropzone';
 import { v4 as uuidv4 } from 'uuid';
+import produce from 'immer';
+import styles from './App.module.scss';
 
 export interface FileInfo {
   id: string;
@@ -29,17 +31,6 @@ function App() {
   const isReadyToDownload = useMemo(() => {
     return Object.keys(files).every((it) => compressedSizes[it] !== undefined || errors[it] !== undefined);
   }, [files, errors, compressedSizes]);
-
-  const [exq, setExq] = useState<ExoQuant | null>(null);
-  const [imageSrc, setImageSrc] = useState('');
-
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const imageData = await readFileAsImageData(file);
-      compressImage(imageData);
-    }
-  };
 
   const onDrop = useCallback((files: Array<File>) => {
     const newFiles: { [key: string]: FileInfo } = {};
@@ -73,42 +64,64 @@ function App() {
     noClick: hasFiles,
   });
 
-  const readFileAsImageData = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-          const imageData = ctx.getImageData(0, 0, img.width, img.height);
-          resolve(imageData);
+  useEffect(() => {
+    const keys = Object.keys(files);
+
+    const uploadFiles = keys
+      .filter((it) => !requestFilesRef.current[it])
+      .map((it) => {
+        const info = files[it];
+
+        return {
+          id: info.id,
+          data: filesRef.current[info.id],
         };
-        img.src = e.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+      });
+    console.log(uploadFiles);
 
-  const compressImage = (imageData) => {
-    const exq = new ExoQuant();
-    // Assuming imageData.data is a Uint8ClampedArray of the image's RGBA values
-    exq.Feed(imageData.data);
-    exq.QuantizeHq(256); // Quantize to 256 colors
-    const palette = exq.GetPalette(256);
-    const indexData = exq.MapImage(imageData.width * imageData.height, imageData.data);
+    for (let i = 0; i < uploadFiles.length; i++) {
+      const { id, data } = uploadFiles[i];
 
-    // Convert indexData and palette back to image displayable format if necessary
-  };
+      const formData = new FormData();
+      formData.append('image', data);
+      requestFilesRef.current[id] = true;
+
+      // axios
+      //   .post<Blob>('http://localhost:3000/compress', formData, {
+      //     responseType: 'blob',
+      //     onUploadProgress: (progressEvent) => {
+      //       setProgresses((prevState) => {
+      //         return produce(prevState, (draft) => {
+      //           draft[id] = progressEvent.progress || 0;
+      //         });
+      //       });
+      //     },
+      //   })
+      //   .then((payload) => {
+      //     if (payload.status === 200) {
+      //       compressedFilesRef.current[id] = payload.data;
+      //       setCompressedSizes((prevState) => {
+      //         return produce(prevState, (draft) => {
+      //           draft[id] = payload.data.size;
+      //         });
+      //       });
+      //     }
+      //   })
+      //   .catch((error) => {
+      //     setErrors((prevState) => {
+      //       return produce(prevState, (draft) => {
+      //         draft[id] = error.message || 'Unknown Error';
+      //       });
+      //     });
+      //   });
+    }
+  }, [files]);
 
   return (
-    <div>
-      <input type="file" onChange={handleFileChange} accept="image/png, image/jpeg" />
-      <img src={imageSrc} alt="Compressed" />
+    <div className={styles.app}>
+      <div {...getRootProps({ className: styles.inner })}>
+        <input {...getInputProps()} />
+      </div>
     </div>
   );
 }
